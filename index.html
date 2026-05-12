@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>단꿈e 배정 관리</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8f9fa;--surface:#ffffff;--border:#e2e8f0;--border2:#cbd5e1;
+  --text:#1e293b;--text2:#64748b;--text3:#94a3b8;
+  --blue:#2563eb;--blue-bg:#eff6ff;--blue-light:#dbeafe;
+  --green:#16a34a;--green-bg:#f0fdf4;--green-light:#dcfce7;
+  --amber:#d97706;--amber-bg:#fffbeb;--amber-light:#fef3c7;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;--purple-light:#ede9fe;
+  --red:#dc2626;--red-bg:#fef2f2;--red-light:#fee2e2;
+  --gray:#475569;--gray-bg:#f8fafc;--gray-light:#f1f5f9;
+  --radius:8px;--radius-lg:12px;
+}
+body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:var(--text);min-height:100vh}
+a{color:inherit;text-decoration:none}
+
+/* Layout */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.header-left{display:flex;align-items:center;gap:16px}
+.logo{font-size:16px;font-weight:700;color:var(--blue);letter-spacing:-0.3px}
+.logo span{color:var(--text);font-weight:400}
+.role-sw{display:flex;background:var(--gray-light);border-radius:6px;padding:3px;gap:2px}
+.role-btn{padding:4px 14px;border:none;background:transparent;font-size:12px;cursor:pointer;border-radius:5px;color:var(--text2);transition:all .15s;font-weight:500}
+.role-btn.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.role-badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600}
+.rb-admin{background:var(--blue-light);color:var(--blue)}
+.rb-manager{background:var(--green-light);color:var(--green)}
+
+.main{padding:20px 24px;max-width:1600px;margin:0 auto}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tab{padding:10px 20px;border:none;background:transparent;font-size:13px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;font-weight:500}
+.tab.on{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* Cards */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px}
+.slabel{font-size:11px;color:var(--text2);margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+.sval{font-size:24px;font-weight:700}
+
+/* Toolbar */
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.btn{padding:7px 14px;border:1px solid var(--border2);background:var(--surface);border-radius:var(--radius);font-size:12px;cursor:pointer;color:var(--text);display:inline-flex;align-items:center;gap:6px;transition:all .15s;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--gray-light);border-color:var(--blue)}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn-primary:hover{background:#1d4ed8;border-color:#1d4ed8}
+.btn-success{background:var(--green);border-color:var(--green);color:#fff}
+.btn-success:hover{background:#15803d;border-color:#15803d}
+.btn-danger{background:var(--red);border-color:var(--red);color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+input[type=file]{display:none}
+
+/* Filter bar */
+.fbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+select.fsel,input.finput{padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--surface);color:var(--text);cursor:pointer;outline:none}
+select.fsel:focus,input.finput:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-light)}
+input.finput{min-width:180px}
+
+/* Info box */
+.infobox{background:var(--amber-bg);border:1px solid #fcd34d;border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400e;line-height:1.6}
+
+/* Legend */
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.legdot{width:10px;height:10px;border-radius:3px}
+
+/* Table */
+.twrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.tscroll{overflow-x:auto;max-height:520px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:1500px}
+thead{position:sticky;top:0;z-index:10}
+thead tr{background:var(--gray-light)}
+th{padding:9px 8px;text-align:left;font-weight:600;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none}
+th .col-sub{display:block;font-size:9px;font-weight:400;opacity:.7;margin-top:1px}
+td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--gray-bg)}
+.col-admin{background:rgba(37,99,235,.05)}
+.col-manager{background:rgba(22,163,74,.05)}
+.col-auto{background:rgba(217,119,6,.05)}
+.col-pay{background:rgba(124,58,237,.05)}
+thead .col-admin{background:rgba(37,99,235,.08)}
+thead .col-manager{background:rgba(22,163,74,.08)}
+thead .col-auto{background:rgba(217,119,6,.08)}
+thead .col-pay{background:rgba(124,58,237,.08)}
+
+/* Cell select */
+.csel{width:100%;border:none;background:transparent;font-size:12px;color:var(--text);cursor:pointer;padding:0;outline:none}
+.csel:disabled{cursor:default;color:var(--text2)}
+.csel:focus{outline:2px solid var(--blue);border-radius:3px}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap}
+.b-결제,.b-결제완료{background:var(--green-light);color:var(--green)}
+.b-환불{background:var(--red-light);color:var(--red)}
+.b-대상{background:var(--blue-light);color:var(--blue)}
+.b-제외{background:var(--gray-light);color:var(--gray)}
+.b-제외환불완료{background:var(--red-light);color:var(--red);font-size:9px}
+.b-empty{background:var(--gray-light);color:var(--text3)}
+
+/* Memo cell */
+.memo-cell{cursor:pointer;color:var(--text2);font-style:italic;font-size:11px}
+.memo-cell.filled{color:var(--text);font-style:normal}
+.memo-cell:hover{color:var(--blue);text-decoration:underline}
+
+/* Empty state */
+.empty{padding:60px 20px;text-align:center}
+.empty-icon{font-size:40px;margin-bottom:12px;opacity:.3}
+.empty h3{font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.empty p{font-size:12px;color:var(--text3)}
+.upload-drop{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:40px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);margin-top:16px}
+.upload-drop:hover{border-color:var(--blue);background:var(--blue-bg)}
+.upload-drop svg{width:36px;height:36px;color:var(--text3);margin-bottom:10px}
+.upload-drop p{font-size:13px;color:var(--text2);font-weight:500}
+.upload-drop small{font-size:11px;color:var(--text3)}
+
+/* Row count */
+.rowcount{font-size:11px;color:var(--text3);padding:8px 12px;background:var(--gray-bg);border-top:1px solid var(--border)}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);padding:20px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.15)}
+.modal h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.modal .msub{font-size:12px;color:var(--text2);margin-bottom:14px}
+.modal textarea{width:100%;padding:10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;resize:vertical;min-height:100px;outline:none;color:var(--text);background:var(--surface)}
+.modal textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-light)}
+.mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+
+/* Fee tab */
+.fee-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+.fee-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.fee-name{font-size:15px;font-weight:700}
+.fee-amt{font-size:22px;font-weight:700;color:var(--green);text-align:right}
+.fee-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.fee-chips{display:flex;gap:6px;flex-wrap:wrap}
+.fchip{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--gray-light);color:var(--text2);font-weight:500}
+.fee-table{width:100%;margin-top:12px;border-top:1px solid var(--border);padding-top:12px}
+.fee-table tr td{padding:4px 0;font-size:12px}
+.fee-table tr td:last-child{text-align:right;font-weight:600}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#f8fafc;padding:10px 20px;border-radius:24px;font-size:12px;font-weight:500;opacity:0;transition:opacity .3s;z-index:999;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
+/* Loading overlay */
+.loading{display:none;position:fixed;inset:0;background:rgba(255,255,255,.8);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.loading.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading p{font-size:13px;color:var(--text2);font-weight:500}
+
+/* Column widths */
+td:nth-child(1),th:nth-child(1){width:40px}
+td:nth-child(2),th:nth-child(2){width:34px}
+td:nth-child(3),th:nth-child(3){width:34px}
+td:nth-child(4),th:nth-child(4){width:78px}
+td:nth-child(5),th:nth-child(5){width:74px}
+td:nth-child(6),th:nth-child(6){width:70px}
+td:nth-child(7),th:nth-child(7){width:70px}
+td:nth-child(8),th:nth-child(8){width:86px}
+td:nth-child(9),th:nth-child(9){width:80px}
+td:nth-child(10),th:nth-child(10){width:70px}
+td:nth-child(11),th:nth-child(11){width:62px}
+td:nth-child(12),th:nth-child(12){width:80px}
+td:nth-child(13),th:nth-child(13){width:48px}
+td:nth-child(14),th:nth-child(14){width:90px}
+td:nth-child(15),th:nth-child(15){width:90px}
+td:nth-child(16),th:nth-child(16){width:90px}
+td:nth-child(17),th:nth-child(17){width:56px}
+td:nth-child(18),th:nth-child(18){width:76px}
+td:nth-child(19),th:nth-child(19){width:56px}
+td:nth-child(20),th:nth-child(20){width:68px}
+td:nth-child(21),th:nth-child(21){width:68px}
+td:nth-child(22),th:nth-child(22){min-width:110px}
+
+@media(max-width:768px){
+  .main{padding:12px}
+  .header{padding:0 12px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <p id="loading-msg">데이터 불러오는 중...</p>
+</div>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo">단꿈e <span>배정 관리</span></div>
+    <div class="role-sw">
+      <button class="role-btn on" onclick="setRole('admin')">관리자</button>
+      <button class="role-btn" onclick="setRole('manager')">매니저</button>
+    </div>
+  </div>
+  <span class="role-badge rb-admin" id="rbadge">관리자 모드</span>
+</header>
+
+<main class="main">
+  <div class="tabs">
+    <button class="tab on" onclick="showTab('main')">📋 배정 현황</button>
+    <button class="tab" onclick="showTab('fee')">🧮 수수료 계산</button>
+  </div>
+
+  <!-- 배정 현황 탭 -->
+  <div id="tab-main">
+    <div class="legend">
+      <span class="leg"><span class="legdot" style="background:#2563eb"></span>F~N열: 관리자 업로드</span>
+      <span class="leg"><span class="legdot" style="background:#16a34a"></span>D·E열: 매니저 배정</span>
+      <span class="leg"><span class="legdot" style="background:#d97706"></span>Q·R열: 자동 판단</span>
+      <span class="leg"><span class="legdot" style="background:#7c3aed"></span>S~V열: 결제 매칭</span>
+    </div>
+
+    <div class="infobox">
+      <strong>Q열 자동 판단:</strong>
+      배정일자 없이 결제 → 제외 &nbsp;|&nbsp;
+      결제일이 배정일보다 앞서면 → 제외 &nbsp;|&nbsp;
+      수수료 대상 상품 + 조건 충족 → 대상 &nbsp;|&nbsp;
+      G마켓·CJ 외부채널 상품 → 제외
+      &nbsp;&nbsp;<strong>R열:</strong>
+      Q=대상 + 결제 → 결제완료 &nbsp;|&nbsp; Q=대상 + 환불 → 제외(환불완료)
+    </div>
+
+    <div class="toolbar">
+      <label for="up-file" id="upload-label">
+        <span class="btn btn-primary" id="up-btn">⬆ 엑셀 업로드 (관리자)</span>
+      </label>
+      <input type="file" id="up-file" accept=".xlsx,.xls" onchange="handleUpload(event)">
+      <button class="btn btn-success" id="match-btn" onclick="runMatch()" disabled>🔗 결제 매칭 + Q·R 자동계산</button>
+      <button class="btn" onclick="loadFromSheet()" id="load-btn">🔄 시트에서 불러오기</button>
+      <button class="btn" onclick="exportXlsx()" style="margin-left:auto">⬇ 엑셀 내보내기</button>
+    </div>
+
+    <div class="fbar">
+      <select class="fsel" id="f-teacher" onchange="applyFilter()"><option value="">배정교사 전체</option></select>
+      <select class="fsel" id="f-grade" onchange="applyFilter()">
+        <option value="">학년 전체</option>
+        <option>1학년</option><option>2학년</option><option>3학년</option>
+        <option>4학년</option><option>5학년</option><option>6학년</option>
+      </select>
+      <select class="fsel" id="f-pay" onchange="applyFilter()">
+        <option value="">결제상태 전체</option>
+        <option value="결제">결제</option>
+        <option value="환불">환불</option>
+        <option value="-">미결제</option>
+      </select>
+      <select class="fsel" id="f-q" onchange="applyFilter()">
+        <option value="">체크 전체</option>
+        <option value="대상">대상</option>
+        <option value="제외">제외</option>
+        <option value="">미처리</option>
+      </select>
+      <select class="fsel" id="f-r" onchange="applyFilter()">
+        <option value="">전환여부 전체</option>
+        <option value="결제완료">결제완료</option>
+        <option value="제외(환불완료)">제외(환불완료)</option>
+      </select>
+      <input class="finput" id="fsearch" placeholder="🔍 학부모·학습자 검색..." oninput="applyFilter()">
+    </div>
+
+    <div class="stats">
+      <div class="scard"><div class="slabel">전체 배정</div><div class="sval" id="s-total" style="color:var(--text)">0</div></div>
+      <div class="scard"><div class="slabel">결제 완료</div><div class="sval" id="s-pay" style="color:var(--green)">0</div></div>
+      <div class="scard"><div class="slabel">Q=대상</div><div class="sval" id="s-target" style="color:var(--blue)">0</div></div>
+      <div class="scard"><div class="slabel">Q=제외</div><div class="sval" id="s-excl" style="color:var(--red)">0</div></div>
+      <div class="scard"><div class="slabel">수수료 인정</div><div class="sval" id="s-fee" style="color:var(--amber)">0점</div></div>
+    </div>
+
+    <div id="empty-area">
+      <div class="upload-drop" onclick="document.getElementById('up-file').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+        <p>클릭하여 엑셀 파일 업로드</p>
+        <small>Sheet1 + 결제_리스트 + 수수료 시트 포함 파일</small>
+      </div>
+      <div style="text-align:center;margin-top:12px">
+        <button class="btn" onclick="loadFromSheet()">🔄 또는 구글 시트에서 불러오기</button>
+      </div>
+    </div>
+
+    <div id="table-area" style="display:none">
+      <div class="twrap">
+        <div class="tscroll">
+          <table>
+            <thead><tr>
+              <th>NO1<span class="col-sub">A</span></th>
+              <th>NO2<span class="col-sub">B</span></th>
+              <th>NO3<span class="col-sub">C</span></th>
+              <th class="col-manager">배정교사<span class="col-sub">D 매니저</span></th>
+              <th class="col-manager">배정일자<span class="col-sub">E 매니저</span></th>
+              <th class="col-admin">학부모가입일<span class="col-sub">F 관리자</span></th>
+              <th class="col-admin">학부모성함<span class="col-sub">G 관리자</span></th>
+              <th class="col-admin">학부모ID<span class="col-sub">H 관리자</span></th>
+              <th class="col-admin">학부모연락처<span class="col-sub">I 관리자</span></th>
+              <th class="col-admin">학습자가입일<span class="col-sub">J 관리자</span></th>
+              <th class="col-admin">학습자이름<span class="col-sub">K 관리자</span></th>
+              <th class="col-admin">학습자ID<span class="col-sub">L 관리자</span></th>
+              <th class="col-admin">학년<span class="col-sub">M 관리자</span></th>
+              <th class="col-admin">가입경로<span class="col-sub">N 관리자</span></th>
+              <th>매니저비고<span class="col-sub">O 매니저</span></th>
+              <th>관리자비고<span class="col-sub">P 관리자</span></th>
+              <th class="col-auto">체크<span class="col-sub">Q 자동</span></th>
+              <th class="col-auto">전환여부<span class="col-sub">R 자동</span></th>
+              <th class="col-pay">결제상태<span class="col-sub">S 매칭</span></th>
+              <th class="col-pay">결제일자<span class="col-sub">T 매칭</span></th>
+              <th class="col-pay">환불일자<span class="col-sub">U 매칭</span></th>
+              <th class="col-pay">상품명<span class="col-sub">V 매칭</span></th>
+            </tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="rowcount" id="rowcount"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 수수료 탭 -->
+  <div id="tab-fee" style="display:none">
+    <div class="toolbar">
+      <select class="fsel" id="fee-tsel" onchange="renderFee()"><option value="">전체 교사</option></select>
+      <button class="btn" onclick="renderFee()">🔄 재계산</button>
+    </div>
+    <div id="fee-wrap">
+      <div class="empty">
+        <div class="empty-icon">🧮</div>
+        <h3>데이터 없음</h3>
+        <p>배정 현황 탭에서 데이터를 불러오거나 업로드하세요</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3 id="m-title">비고 편집</h3>
+    <div class="msub" id="m-sub"></div>
+    <textarea id="m-input" placeholder="내용을 입력하세요..."></textarea>
+    <div class="mbtns">
+      <button class="btn" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveModal()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ====================================================
+// CONFIG
+// ====================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbxb6cdm7QOboYcG4XjLnglGHIF9Ro835bUB_0MdfQz19GrPwqfadoy1rqzwHE6AqDw3tw/exec';
+
+const FEE_PRODUCTS = {
+  '종합 프리패스[12개월 수강권]': 1,
+  '종합 프리패스[6개월 수강권]': 0.5,
+  '3학년 기본 패키지 강좌': 1, '3학년 심화 패키지 강좌': 1,
+  '4학년 기본 패키지 강좌': 1, '4학년 심화 패키지 강좌': 1,
+  '5학년 기본 패키지 강좌': 1, '5학년 심화 패키지 강좌': 1,
+  '6학년 기본 패키지 강좌': 1, '6학년 심화 패키지 강좌': 1,
+};
+
+const FEE_RATES = [
+  [10,0.053],[20,0.057],[30,0.060],[40,0.063],[50,0.067],
+  [60,0.070],[70,0.0705],[80,0.071],[90,0.0715],[100,0.072],[Infinity,0.073]
+];
+const INCENTIVES = [
+  [40,0],[50,200000],[60,250000],[70,300000],[80,350000],
+  [90,400000],[100,450000],[Infinity,500000]
+];
+
+const TEACHERS = ['오소현'];
+const DATES = [
+  '2026-04-01','2026-04-02','2026-04-03','2026-04-04',
+  '2026-04-07','2026-04-08','2026-04-09','2026-04-10',
+  '2026-04-11','2026-04-12','2026-04-13','2026-04-14',
+  '2026-04-15','2026-04-16','2026-04-17','2026-04-18','2026-04-19'
+];
+
+// ====================================================
+// STATE
+// ====================================================
+let role = 'admin';
+let rows = [];
+let payRows = [];
+let filtered = [];
+let editCtx = null;
+let saveTimer = {};
+
+// ====================================================
+// UTILS
+// ====================================================
+function exDate(v) {
+  if (!v || v === '' || v === '-') return '';
+  if (typeof v === 'number') {
+    const d = new Date(Math.round((v - 25569) * 86400000));
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  return String(v).trim();
+}
+
+function toast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function showLoading(msg='처리 중...') {
+  document.getElementById('loading-msg').textContent = msg;
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loading').classList.remove('show');
+}
+
+async function callAPI(params, postData=null) {
+  const url = API_URL + '?' + new URLSearchParams(params);
+  const opts = postData
+    ? { method:'POST', body: JSON.stringify(postData) }
+    : { method:'GET' };
+  const res = await fetch(url, opts);
+  return res.json();
+}
+
+// ====================================================
+// Q·R 자동 계산
+// ====================================================
+function calcQ(r) {
+  const hasPay = r.payStatus === '결제' || r.payStatus === '환불';
+  if (!hasPay) return '';
+  if (!r.assignDate && hasPay) return '제외';
+  if (r.payDate && r.assignDate && r.payDate < r.assignDate) return '제외';
+  if (hasPay && FEE_PRODUCTS[r.productName]) return '대상';
+  return '제외';
+}
+function calcR(r) {
+  if (r.checkQ === '대상' && r.payStatus === '결제') return '결제완료';
+  if (r.checkQ === '대상' && r.payStatus === '환불') return '제외(환불완료)';
+  return '';
+}
+
+// ====================================================
+// ROLE
+// ====================================================
+function setRole(r) {
+  role = r;
+  document.querySelectorAll('.role-btn').forEach(b =>
+    b.classList.toggle('on', b.textContent.trim() === (r==='admin'?'관리자':'매니저'))
+  );
+  const b = document.getElementById('rbadge');
+  b.textContent = r==='admin' ? '관리자 모드' : '매니저 모드';
+  b.className = 'role-badge ' + (r==='admin' ? 'rb-admin' : 'rb-manager');
+  const upBtn = document.getElementById('up-btn');
+  upBtn.style.opacity = r==='admin' ? '1' : '0.4';
+  document.getElementById('upload-label').style.pointerEvents = r==='admin' ? 'auto' : 'none';
+  renderTable();
+  toast(r==='admin' ? '관리자 모드로 전환됐어요' : '매니저 모드로 전환됐어요');
+}
+
+// ====================================================
+// TAB
+// ====================================================
+function showTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i) => b.classList.toggle('on', ['main','fee'][i]===t));
+  document.getElementById('tab-main').style.display = t==='main' ? 'block' : 'none';
+  document.getElementById('tab-fee').style.display = t==='fee' ? 'block' : 'none';
+  if (t==='fee') renderFee();
+}
+
+// ====================================================
+// LOAD FROM SHEET
+// ====================================================
+async function loadFromSheet() {
+  showLoading('구글 시트에서 불러오는 중...');
+  try {
+    const [r1, r2] = await Promise.all([
+      callAPI({action:'getSheet1'}),
+      callAPI({action:'getPayment'})
+    ]);
+    if (r1.error) throw new Error(r1.error);
+    const raw = r1.data.slice(1).filter(r => r.some(c => c !== ''));
+    rows = raw.map((r, i) => ({
+      no1: r[0]||i+1, no2: r[1]||'', no3: r[2]||'',
+      teacher: r[3]||'', assignDate: exDate(r[4]),
+      parentJoinDate: exDate(r[5]), parentName: r[6]||'',
+      parentId: r[7]||'', parentPhone: r[8]||'',
+      studentJoinDate: exDate(r[9]), studentName: r[10]||'',
+      studentId: r[11]||'', grade: r[12]||'', joinPath: r[13]||'',
+      memoManager: r[14]||'', memoAdmin: r[15]||'',
+      checkQ: r[16]&&r[16]!=='-' ? String(r[16]) : '',
+      convertR: r[17]&&r[17]!=='-' ? String(r[17]) : '',
+      payStatus: r[18]&&r[18]!=='-' ? String(r[18]) : '-',
+      payDate: exDate(r[19]), refundDate: exDate(r[20]), productName: r[21]||''
+    }));
+    if (r2.data) payRows = r2.data.slice(1);
+    updateSelects();
+    showTableArea();
+    applyFilter();
+    toast(`✅ ${rows.length}건 불러왔어요!`);
+  } catch(e) {
+    toast('❌ 불러오기 실패: ' + e.message, 4000);
+  }
+  hideLoading();
+}
+
+// ====================================================
+// EXCEL UPLOAD
+// ====================================================
+function handleUpload(e) {
+  if (role !== 'admin') { toast('관리자만 업로드할 수 있어요'); return; }
+  const f = e.target.files[0]; if (!f) return;
+  showLoading('엑셀 파일 읽는 중...');
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, {type:'binary'});
+      const ws1 = wb.Sheets[wb.SheetNames[0]];
+      const wsp = wb.Sheets['결제_리스트'] || wb.Sheets[wb.SheetNames[1]];
+      if (wsp) payRows = XLSX.utils.sheet_to_json(wsp, {header:1, defval:''}).slice(1);
+      const raw = XLSX.utils.sheet_to_json(ws1, {header:1, defval:''}).slice(1).filter(r => r.some(c => c!==''));
+      rows = raw.map((r, i) => ({
+        no1: r[0]||i+1, no2: r[1]||'', no3: r[2]||'',
+        teacher: r[3]||'', assignDate: exDate(r[4]),
+        parentJoinDate: exDate(r[5]), parentName: r[6]||'',
+        parentId: r[7]||'', parentPhone: r[8]||'',
+        studentJoinDate: exDate(r[9]), studentName: r[10]||'',
+        studentId: r[11]||'', grade: r[12]||'', joinPath: r[13]||'',
+        memoManager: r[14]||'', memoAdmin: r[15]||'',
+        checkQ: r[16]&&r[16]!=='-' ? String(r[16]) : '',
+        convertR: r[17]&&r[17]!=='-' ? String(r[17]) : '',
+        payStatus: r[18]&&r[18]!=='-' ? String(r[18]) : '-',
+        payDate: exDate(r[19]), refundDate: exDate(r[20]), productName: r[21]||''
+      }));
+
+      // 구글 시트에 업로드
+      showLoading('구글 시트에 저장 중...');
+      const headers = ['NO1','NO2','NO3','배정교사','배정일자','학부모가입일','학부모성함','학부모ID','학부모연락처','학습자가입일','학습자이름','학습자ID','학년','가입경로','매니저비고','관리자비고','체크','전환여부','결제상태','결제일자','환불일자','상품명'];
+      const sheetRows = rows.map(r => [r.no1,r.no2,r.no3,r.teacher,r.assignDate,r.parentJoinDate,r.parentName,r.parentId,r.parentPhone,r.studentJoinDate,r.studentName,r.studentId,r.grade,r.joinPath,r.memoManager,r.memoAdmin,r.checkQ,r.convertR,r.payStatus,r.payDate,r.refundDate,r.productName]);
+      await callAPI({action:'uploadSheet1'}, {headers, rows: sheetRows});
+
+      updateSelects();
+      showTableArea();
+      applyFilter();
+      toast(`✅ ${rows.length}건 업로드 + 시트 저장 완료!`);
+    } catch(err) {
+      toast('❌ 업로드 실패: ' + err.message, 4000);
+    }
+    hideLoading();
+  };
+  reader.readAsBinaryString(f);
+  e.target.value = '';
+}
+
+// ====================================================
+// PAYMENT MATCH
+// ====================================================
+function runMatch() {
+  if (!payRows.length) { toast('결제_리스트 데이터가 없어요'); return; }
+  showLoading('결제 매칭 중...');
+  const map = {};
+  payRows.forEach(r => {
+    const sid = String(r[6]||'').trim();
+    if (!sid || sid==='-') return;
+    if (!map[sid]) map[sid] = [];
+    map[sid].push({ status: String(r[11]||'-'), payDate: exDate(r[1]), refundDate: exDate(r[18]), product: String(r[10]||'') });
+  });
+  let matched = 0;
+  rows.forEach(row => {
+    const sid = String(row.studentId||'').trim();
+    if (sid && map[sid]) {
+      const best = map[sid].find(p => p.status==='결제') || map[sid][map[sid].length-1];
+      row.payStatus = best.status;
+      row.payDate = best.payDate;
+      row.refundDate = best.refundDate;
+      row.productName = best.product;
+      matched++;
+    }
+    row.checkQ = calcQ(row);
+    row.convertR = calcR(row);
+  });
+  applyFilter();
+  hideLoading();
+  toast(`✅ ${matched}건 매칭! Q·R열 자동 계산 완료`);
+  document.getElementById('match-btn').disabled = true;
+}
+
+// ====================================================
+// FILTER & RENDER
+// ====================================================
+function applyFilter() {
+  const ft = document.getElementById('f-teacher').value;
+  const fg = document.getElementById('f-grade').value;
+  const fp = document.getElementById('f-pay').value;
+  const fq = document.getElementById('f-q').value;
+  const fr = document.getElementById('f-r').value;
+  const fs = document.getElementById('fsearch').value.toLowerCase();
+  filtered = rows.filter(r => {
+    if (ft && r.teacher !== ft) return false;
+    if (fg && r.grade !== fg) return false;
+    if (fp) {
+      if (fp==='-' && r.payStatus!=='-') return false;
+      if (fp!=='-' && r.payStatus!==fp) return false;
+    }
+    if (fq !== '' && r.checkQ !== fq) return false;
+    if (fr && r.convertR !== fr) return false;
+    if (fs && !(r.parentName.toLowerCase().includes(fs) || r.studentName.toLowerCase().includes(fs) || r.studentId.toLowerCase().includes(fs))) return false;
+    return true;
+  });
+  renderTable();
+  updateStats();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:30px;color:#94a3b8">데이터가 없어요</td></tr>';
+    document.getElementById('rowcount').textContent = '';
+    return;
+  }
+  const isA = role==='admin', canEdit = role==='admin'||role==='manager';
+  tbody.innerHTML = filtered.map(r => {
+    const ri = rows.indexOf(r);
+    const qBadge = r.checkQ ? `<span class="badge b-${r.checkQ}">${r.checkQ}</span>` : `<span class="badge b-empty">-</span>`;
+    const rKey = r.convertR === '제외(환불완료)' ? '제외환불완료' : r.convertR;
+    const rBadge = r.convertR ? `<span class="badge b-${rKey}">${r.convertR}</span>` : `<span class="badge b-empty">-</span>`;
+    const sBadge = r.payStatus && r.payStatus!=='-'
+      ? `<span class="badge b-${r.payStatus==='결제'?'결제':'환불'}">${r.payStatus}</span>`
+      : `<span class="badge b-empty">-</span>`;
+    const teacherOpts = ['', ...TEACHERS].map(t => `<option value="${t}" ${r.teacher===t?'selected':''}>${t||'선택...'}</option>`).join('');
+    const dateOpts = ['', ...DATES].map(d => `<option value="${d}" ${r.assignDate===d?'selected':''}>${d||'선택...'}</option>`).join('');
+    const qOpts = `<option value="">-</option><option value="대상" ${r.checkQ==='대상'?'selected':''}>대상</option><option value="제외" ${r.checkQ==='제외'?'selected':''}>제외</option>`;
+    const rOpts = `<option value="">-</option><option value="결제완료" ${r.convertR==='결제완료'?'selected':''}>결제완료</option><option value="제외(환불완료)" ${r.convertR==='제외(환불완료)'?'selected':''}>제외(환불완료)</option>`;
+    const memoMClass = r.memoManager ? 'memo-cell filled' : 'memo-cell';
+    const memoAClass = r.memoAdmin ? 'memo-cell filled' : 'memo-cell';
+    return `<tr>
+<td>${r.no1}</td><td>${r.no2}</td><td>${r.no3}</td>
+<td class="col-manager"><select class="csel" ${canEdit?'':'disabled'} onchange="updField(${ri},'teacher',this.value)">${teacherOpts}</select></td>
+<td class="col-manager"><select class="csel" ${canEdit?'':'disabled'} onchange="updField(${ri},'assignDate',this.value)">${dateOpts}</select></td>
+<td class="col-admin" title="${r.parentJoinDate}">${r.parentJoinDate||'-'}</td>
+<td class="col-admin" title="${r.parentName}">${r.parentName||'-'}</td>
+<td class="col-admin" title="${r.parentId}">${r.parentId||'-'}</td>
+<td class="col-admin" title="${r.parentPhone}">${r.parentPhone||'-'}</td>
+<td class="col-admin" title="${r.studentJoinDate}">${r.studentJoinDate||'-'}</td>
+<td class="col-admin" title="${r.studentName}">${r.studentName||'-'}</td>
+<td class="col-admin" title="${r.studentId}">${r.studentId||'-'}</td>
+<td class="col-admin">${r.grade||'-'}</td>
+<td class="col-admin" title="${r.joinPath}">${r.joinPath||'-'}</td>
+<td onclick="${canEdit?`openModal(${ri},'memoManager','매니저 비고')`:''}"><span class="${memoMClass}">${r.memoManager||'클릭하여 입력'}</span></td>
+<td onclick="${isA?`openModal(${ri},'memoAdmin','관리자 비고')`:''}"><span class="${memoAClass}">${r.memoAdmin||'클릭하여 입력'}</span></td>
+<td class="col-auto"><select class="csel" ${canEdit?'':'disabled'} onchange="updField(${ri},'checkQ',this.value)">${qOpts}</select></td>
+<td class="col-auto"><select class="csel" ${canEdit?'':'disabled'} onchange="updField(${ri},'convertR',this.value)">${rOpts}</select></td>
+<td class="col-pay">${sBadge}</td>
+<td class="col-pay" title="${r.payDate}">${r.payDate||'-'}</td>
+<td class="col-pay" title="${r.refundDate}">${r.refundDate||'-'}</td>
+<td class="col-pay" title="${r.productName}">${r.productName||'-'}</td>
+</tr>`;
+  }).join('');
+  document.getElementById('rowcount').textContent = `${filtered.length}개 행 표시 (전체 ${rows.length}건)`;
+}
+
+// ====================================================
+// UPDATE FIELD → 시트 자동 저장
+// ====================================================
+function updField(idx, field, val) {
+  rows[idx][field] = val;
+  if (['teacher','assignDate','payStatus','payDate','productName'].includes(field)) {
+    rows[idx].checkQ = calcQ(rows[idx]);
+    rows[idx].convertR = calcR(rows[idx]);
+  }
+  if (field === 'checkQ') rows[idx].convertR = calcR(rows[idx]);
+  applyFilter();
+  updateStats();
+  // 디바운스: 1초 후 시트에 저장
+  const key = idx + '_' + field;
+  clearTimeout(saveTimer[key]);
+  saveTimer[key] = setTimeout(() => saveToSheet(idx, field, rows[idx][field]), 1000);
+  // Q·R도 같이 저장
+  if (rows[idx].checkQ !== undefined) {
+    clearTimeout(saveTimer[idx+'_checkQ']);
+    saveTimer[idx+'_checkQ'] = setTimeout(() => saveToSheet(idx, 'checkQ', rows[idx].checkQ), 1000);
+  }
+  if (rows[idx].convertR !== undefined) {
+    clearTimeout(saveTimer[idx+'_convertR']);
+    saveTimer[idx+'_convertR'] = setTimeout(() => saveToSheet(idx, 'convertR', rows[idx].convertR), 1000);
+  }
+}
+
+async function saveToSheet(rowIndex, field, value) {
+  try {
+    await callAPI({ action:'updateRow', rowIndex, field, value });
+  } catch(e) {
+    console.warn('시트 저장 실패:', e);
+  }
+}
+
+// ====================================================
+// MODAL
+// ====================================================
+function openModal(idx, field, label) {
+  editCtx = {idx, field};
+  document.getElementById('m-title').textContent = label + ' 편집';
+  document.getElementById('m-sub').textContent = (rows[idx].studentName||rows[idx].parentName||'') + (rows[idx].grade ? ' (' + rows[idx].grade + ')' : '');
+  document.getElementById('m-input').value = rows[idx][field]||'';
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('m-input').focus(), 100);
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); editCtx = null; }
+async function saveModal() {
+  if (!editCtx) return;
+  const val = document.getElementById('m-input').value;
+  rows[editCtx.idx][editCtx.field] = val;
+  await saveToSheet(editCtx.idx, editCtx.field, val);
+  closeModal();
+  applyFilter();
+  toast('✅ 저장됐어요');
+}
+document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ====================================================
+// STATS
+// ====================================================
+function updateStats() {
+  document.getElementById('s-total').textContent = rows.length;
+  document.getElementById('s-pay').textContent = rows.filter(r => r.payStatus==='결제').length;
+  document.getElementById('s-target').textContent = rows.filter(r => r.checkQ==='대상').length;
+  document.getElementById('s-excl').textContent = rows.filter(r => r.checkQ==='제외').length;
+  const feeScore = rows.filter(r => r.convertR==='결제완료').reduce((s,r) => s + (FEE_PRODUCTS[r.productName]||0), 0);
+  document.getElementById('s-fee').textContent = feeScore + '점';
+}
+
+// ====================================================
+// SELECTS
+// ====================================================
+function updateSelects() {
+  const teachers = [...new Set(rows.map(r => r.teacher).filter(Boolean))];
+  ['f-teacher','fee-tsel'].forEach(id => {
+    const s = document.getElementById(id);
+    const first = s.options[0];
+    s.innerHTML = ''; s.appendChild(first);
+    teachers.forEach(t => { const o = document.createElement('option'); o.value=t; o.textContent=t; s.appendChild(o); });
+  });
+}
+
+function showTableArea() {
+  document.getElementById('empty-area').style.display = 'none';
+  document.getElementById('table-area').style.display = 'block';
+  document.getElementById('match-btn').disabled = false;
+}
+
+// ====================================================
+// FEE
+// ====================================================
+function renderFee() {
+  const sel = document.getElementById('fee-tsel').value;
+  const teachers = sel ? [sel] : [...new Set(rows.map(r => r.teacher).filter(Boolean))];
+  if (!teachers.length) {
+    document.getElementById('fee-wrap').innerHTML = '<div class="empty"><div class="empty-icon">🧮</div><h3>데이터 없음</h3><p>배정 현황 탭에서 먼저 데이터를 불러오세요</p></div>';
+    return;
+  }
+  document.getElementById('fee-wrap').innerHTML = teachers.map(buildFeeCard).join('');
+}
+
+function getFeeRate(score) { return FEE_RATES.find(([cap]) => score <= cap)[1]; }
+function getIncentive(score) { return [...INCENTIVES].reverse().find(([cap]) => score > cap)?.[1] || 0; }
+
+function buildFeeCard(teacher) {
+  const trows = rows.filter(r => r.teacher === teacher);
+  const eligible = trows.filter(r => r.convertR==='결제완료' && FEE_PRODUCTS[r.productName]);
+  const score = eligible.reduce((s,r) => s + (FEE_PRODUCTS[r.productName]||0), 0);
+  const rate = getFeeRate(score);
+  const incentive = getIncentive(score);
+  const baseFee = eligible.reduce((s,r) => {
+    const base = r.productName.includes('6개월') ? 540000 : r.productName.includes('패키지') ? 893060 : 972000;
+    return s + base * rate;
+  }, 0);
+  const total = Math.round(baseFee + incentive);
+  const excl = trows.filter(r => r.checkQ==='제외').length;
+  const pending = trows.filter(r => !r.checkQ).length;
+
+  const detailRows = [
+    ['전체 배정', trows.length + '건'],
+    ['수수료 인정 점수', score + '점'],
+    ['수수료율', (rate*100).toFixed(2) + '%'],
+    ['기본 수수료', Math.round(baseFee).toLocaleString() + '원'],
+    ['인센티브', incentive.toLocaleString() + '원'],
+    ['제외 건수', excl + '건'],
+    ['미처리', pending + '건'],
+  ];
+
+  return `<div class="fee-card">
+<div class="fee-header">
+  <div>
+    <div class="fee-name">👤 ${teacher}</div>
+    <div class="fee-chips" style="margin-top:8px">
+      <span class="fchip">배정 ${trows.length}건</span>
+      <span class="fchip">인정 ${score}점</span>
+      <span class="fchip">수수료율 ${(rate*100).toFixed(2)}%</span>
+      <span class="fchip">제외 ${excl}건</span>
+    </div>
+  </div>
+  <div>
+    <div class="fee-amt">${total.toLocaleString()}원</div>
+    <div class="fee-sub">수수료 ${Math.round(baseFee).toLocaleString()} + 인센티브 ${incentive.toLocaleString()}</div>
+  </div>
+</div>
+<table class="fee-table">
+  ${detailRows.map(([k,v]) => `<tr><td style="color:#64748b">${k}</td><td>${v}</td></tr>`).join('')}
+</table>
+</div>`;
+}
+
+// ====================================================
+// EXPORT
+// ====================================================
+function exportXlsx() {
+  if (!rows.length) { toast('내보낼 데이터가 없어요'); return; }
+  const headers = ['NO1','NO2','NO3','배정교사','배정일자','학부모가입일','학부모성함','학부모ID','학부모연락처','학습자가입일','학습자이름','학습자ID','학년','가입경로','매니저비고','관리자비고','체크','전환여부','결제상태','결제일자','환불일자','상품명'];
+  const data = rows.map(r => [r.no1,r.no2,r.no3,r.teacher,r.assignDate,r.parentJoinDate,r.parentName,r.parentId,r.parentPhone,r.studentJoinDate,r.studentName,r.studentId,r.grade,r.joinPath,r.memoManager,r.memoAdmin,r.checkQ,r.convertR,r.payStatus,r.payDate,r.refundDate,r.productName]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, '배정현황', ws);
+  XLSX.writeFile(wb, '단꿈e_배정관리_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  toast('✅ 엑셀 내보내기 완료!');
+}
+</script>
+</body>
+</html>
